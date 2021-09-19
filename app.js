@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const Web3 = require('web3')
+const Web3 = require('web3');
 
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
@@ -43,10 +43,17 @@ app.use(function (err, req, res, next) {
 
 class TransactionChecker {
   web3;
+  // web3ws;
   account;
+  // subscription;
+  // projectId = 'eebc80bed4004210894a7399808bd621';
 
   constructor(projectId, account) {
-    this.web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/' + projectId));
+    this.web3 = new Web3(
+      new Web3.providers.HttpProvider(
+        'https://rinkeby.infura.io/v3/' + projectId,
+      ),
+    );
 
     //initialize the account
     this.account = account.toLowerCase();
@@ -56,7 +63,37 @@ class TransactionChecker {
   async checkBlock() {
     // to return the latest block transaction
     let block = await this.web3.eth.getBlock('latest');
+
+    //block number
+    let number = block.number;
+    console.log('Searching block ' + number);
+
+    if (block != null && block.transactions != null) {
+      for (let txHash of block.transactions) {
+        let tx = await this.web3.eth.getTransaction(txHash);
+        console.log('*******************************')
+        console.log(tx)
+        console.log('*******************************');
+        if (this.account == tx.to.toLowerCase()) {
+          console.log('Transaction found on block: ' + number);
+          console.log({
+            address: tx.from,
+            value: this.web3.utils.fromWei(tx.value, 'ether'),
+            timestamp: new Date(),
+          });
+        }
+      }
+    }
   }
 }
+
+// create an instance of the class
+let txChecker = new TransactionChecker(
+  'eebc80bed4004210894a7399808bd621',
+  '0xe1Dd30fecAb8a63105F2C035B084BfC6Ca5B1493',
+);
+setInterval(() => {
+  txChecker.checkBlock();
+}, 5 * 1000);
 
 module.exports = app;
